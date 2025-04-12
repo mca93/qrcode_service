@@ -67,7 +67,7 @@ func CreateApiKey(c *gin.Context) {
 		Name:        req.Name,
 		ClientAppID: clientAppID,
 		KeyPrefix:   keyPrefix,
-		Status:      req.Status,
+		Status:      models.ApiKeyStatusActive,
 		CreatedAt:   time.Now(),
 	}
 
@@ -115,6 +115,12 @@ func UpdateApiKey(c *gin.Context) {
 
 	var req models.ApiKeyUpdateRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Validate the update request
+	if err := validators.ValidateApiKeyUpdate(req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
