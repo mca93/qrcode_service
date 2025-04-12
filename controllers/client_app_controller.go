@@ -111,7 +111,7 @@ func ListClientApps(c *gin.Context) {
 // GET /v1/clientapps/:id
 func GetClientApp(c *gin.Context) {
 	clientAppID := c.Param("id")
-	var clientApp models.ClientAppResponse
+	var clientApp models.ClientApp
 
 	if err := config.DB.First(&clientApp, "id = ?", clientAppID).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "client app not found"})
