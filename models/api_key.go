@@ -17,7 +17,7 @@ type ApiKey struct {
 	Name        string       `json:"name"`
 	ClientAppID string       `json:"clientAppId"`
 	KeyPrefix   string       `json:"keyPrefix"`
-	Status      ApiKeyStatus `json:"status"`
+	Status      ApiKeyStatus `gorm:"default:API_KEY_STATUS_ACTIVE" json:"status"`
 	CreatedAt   time.Time    `json:"createdAt"`
 	RevokedAt   *time.Time   `json:"revokedAt,omitempty"`
 }
