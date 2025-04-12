@@ -13,6 +13,8 @@ func SetupRoutes(router *gin.Engine) {
 
 	// Regista as rotas do ClientApp
 	RegisterClientAppRoutes(router)
+	// Regista as rotas do ApiKey
+	RegisterApiKeyRoutes(router)
 
 	// v1.GET("/qrcodes/:id/image", controllers.GetQRCodeImage)
 	// v1.GET("/clientapps/:clientAppId/apikeys", controllers.ListApiKeys)
