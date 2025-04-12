@@ -126,23 +126,26 @@ func UpdateClientApp(c *gin.Context) {
 	clientAppID := c.Param("id")
 	var req models.ClientAppUpdateRequest
 
+	// Bind JSON request to the update request struct
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
 		return
 	}
 
+	// Validate the update request
 	if err := validators.ValidateClientAppUpdate(req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	var clientApp models.ClientAppResponse
-
+	// Fetch the existing client app from the database
+	var clientApp models.ClientApp
 	if err := config.DB.First(&clientApp, "id = ?", clientAppID).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "client app not found"})
 		return
 	}
 
+	// Update fields if provided in the request
 	if req.Name != "" {
 		clientApp.Name = req.Name
 	}
@@ -153,10 +156,19 @@ func UpdateClientApp(c *gin.Context) {
 		clientApp.Status = req.Status
 	}
 
+	// Save the updated client app to the database
 	if err := config.DB.Save(&clientApp).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update client app"})
 		return
 	}
 
-	c.JSON(http.StatusOK, clientApp)
+	// Return the updated client app as a response
+	c.JSON(http.StatusOK, models.ClientAppResponse{
+		ID:           clientApp.ID,
+		Name:         clientApp.Name,
+		ContactEmail: clientApp.ContactEmail,
+		Status:       clientApp.Status,
+		CreatedAt:    clientApp.CreatedAt,
+		UpdatedAt:    clientApp.UpdatedAt,
+	})
 }

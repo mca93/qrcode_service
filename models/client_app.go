@@ -19,6 +19,8 @@ type ClientApp struct {
 	ContactEmail string          `json:"ContactEmail"`
 	Status       ClientAppStatus `gorm:"default:CLIENT_APP_STATUS_ACTIVE" json:"Status"`
 	CreatedAt    time.Time       `json:"CreatedAt"`
+	UpdatedAt    time.Time       `json:"UpdatedAt"` // Data de atualização do aplicativo
+
 }
 type ClientAppCreateRequest struct {
 	Name         string          `json:"Name"`         // Nome do aplicativo
