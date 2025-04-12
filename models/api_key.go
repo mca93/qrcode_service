@@ -14,6 +14,7 @@ const (
 
 type ApiKey struct {
 	ID          string       `gorm:"primaryKey" json:"id"`
+	Name        string       `json:"name"`
 	ClientAppID string       `json:"clientAppId"`
 	KeyPrefix   string       `json:"keyPrefix"`
 	Status      ApiKeyStatus `json:"status"`
@@ -21,18 +22,18 @@ type ApiKey struct {
 	RevokedAt   *time.Time   `json:"revokedAt,omitempty"`
 }
 type ApiKeyCreateRequest struct {
-	KeyPrefix   string       `json:"keyPrefix" binding:"required"`   // Prefixo da chave
-	ClientAppID string       `json:"clientAppId" binding:"required"` // ID do aplicativo cliente
-	Status      ApiKeyStatus `json:"status" binding:"required"`      // Status da chave
+	Name   string       `json:"name" binding:"required"` // Prefixo da chave
+	Status ApiKeyStatus `json:"status"`                  // Status da chave
 }
 type ApiKeyUpdateRequest struct {
-	KeyPrefix   string       `json:"keyPrefix"`   // Prefixo da chave
+	Name        string       `json:"keyPrefix"`   // Prefixo da chave
 	ClientAppID string       `json:"clientAppId"` // ID do aplicativo cliente
 	Status      ApiKeyStatus `json:"status"`      // Status da chave
 }
 type ApiKeyResponse struct {
 	ID          string       `json:"id"`                  // ID da chave
 	ClientAppID string       `json:"clientAppId"`         // ID do aplicativo cliente
+	Name        string       `json:"name"`                // Nome da chave
 	KeyPrefix   string       `json:"keyPrefix"`           // Prefixo da chave
 	Status      ApiKeyStatus `json:"status"`              // Status da chave
 	CreatedAt   time.Time    `json:"createdAt"`           // Data de criação da chave

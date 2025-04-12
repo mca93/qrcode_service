@@ -9,7 +9,7 @@ func RegisterApiKeyRoutes(r *gin.Engine) {
 	v1 := r.Group("/v1")
 	{
 		// Rotas aninhadas por ClientApp
-		clientApp := v1.Group("/clientapps/:clientAppId/apikeys")
+		clientApp := v1.Group("/clientapps/:id/apikeys")
 		{
 			clientApp.GET("", controllers.ListApiKeys)
 			clientApp.POST("", controllers.CreateApiKey)

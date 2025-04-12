@@ -8,11 +8,12 @@ import (
 	"github.com/google/uuid"
 	"github.com/mca93/qrcode_service/config"
 	"github.com/mca93/qrcode_service/models"
+	"github.com/mca93/qrcode_service/validators"
 )
 
-// GET /v1/clientapps/:clientAppId/apikeys
+// GET /v1/clientapps/:id/apikeys
 func ListApiKeys(c *gin.Context) {
-	clientAppID := c.Param("clientAppId")
+	clientAppID := c.Param("id")
 	status := c.DefaultQuery("status", string(models.ApiKeyStatusUnspecified))
 
 	var keys []models.ApiKey
@@ -27,6 +28,7 @@ func ListApiKeys(c *gin.Context) {
 		responses = append(responses, models.ApiKeyResponse{
 			ID:          key.ID,
 			ClientAppID: key.ClientAppID,
+			Name:        key.Name,
 			KeyPrefix:   key.KeyPrefix,
 			Status:      key.Status,
 			CreatedAt:   key.CreatedAt,
@@ -44,9 +46,9 @@ func ListApiKeys(c *gin.Context) {
 	})
 }
 
-// POST /v1/clientapps/:clientAppId/apikeys
+// POST /v1/clientapps/:id/apikeys
 func CreateApiKey(c *gin.Context) {
-	clientAppID := c.Param("clientAppId")
+	clientAppID := c.Param("id")
 	var req models.ApiKeyCreateRequest
 
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -54,10 +56,17 @@ func CreateApiKey(c *gin.Context) {
 		return
 	}
 
+	keyPrefix, err := validators.ValidateApiKeyCreate(req, clientAppID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
 	apiKey := models.ApiKey{
 		ID:          uuid.NewString(),
+		Name:        req.Name,
 		ClientAppID: clientAppID,
-		KeyPrefix:   req.KeyPrefix,
+		KeyPrefix:   keyPrefix,
 		Status:      req.Status,
 		CreatedAt:   time.Now(),
 	}
@@ -67,20 +76,19 @@ func CreateApiKey(c *gin.Context) {
 		return
 	}
 
-	response := models.ApiKeyResponse{
+	c.JSON(http.StatusOK, models.ApiKeyResponse{
 		ID:          apiKey.ID,
 		ClientAppID: apiKey.ClientAppID,
+		Name:        apiKey.Name,
 		KeyPrefix:   apiKey.KeyPrefix,
 		Status:      apiKey.Status,
 		CreatedAt:   apiKey.CreatedAt,
-	}
-
-	c.JSON(http.StatusOK, response)
+	})
 }
 
-// GET /v1/clientapps/:clientAppId/apikeys/:keyId
+// GET /v1/clientapps/:id/apikeys/:keyId
 func GetApiKey(c *gin.Context) {
-	clientAppID := c.Param("clientAppId")
+	clientAppID := c.Param("id")
 	keyID := c.Param("keyId")
 
 	var key models.ApiKey
@@ -89,21 +97,20 @@ func GetApiKey(c *gin.Context) {
 		return
 	}
 
-	response := models.ApiKeyResponse{
+	c.JSON(http.StatusOK, models.ApiKeyResponse{
 		ID:          key.ID,
 		ClientAppID: key.ClientAppID,
+		Name:        key.Name,
 		KeyPrefix:   key.KeyPrefix,
 		Status:      key.Status,
 		CreatedAt:   key.CreatedAt,
 		RevokedAt:   key.RevokedAt,
-	}
-
-	c.JSON(http.StatusOK, response)
+	})
 }
 
-// PUT /v1/clientapps/:clientAppId/apikeys/:keyId
+// PUT /v1/clientapps/:id/apikeys/:keyId
 func UpdateApiKey(c *gin.Context) {
-	clientAppID := c.Param("clientAppId")
+	clientAppID := c.Param("id")
 	keyID := c.Param("keyId")
 
 	var req models.ApiKeyUpdateRequest
@@ -119,24 +126,25 @@ func UpdateApiKey(c *gin.Context) {
 	}
 
 	config.DB.Model(&key).Updates(models.ApiKey{
-		KeyPrefix:   req.KeyPrefix,
-		ClientAppID: req.ClientAppID,
+		Name:        req.Name,
 		Status:      req.Status,
+		ClientAppID: clientAppID, // garantido pela URL
 	})
 
 	c.JSON(http.StatusOK, models.ApiKeyResponse{
 		ID:          key.ID,
 		ClientAppID: key.ClientAppID,
-		KeyPrefix:   req.KeyPrefix,
-		Status:      req.Status,
+		Name:        key.Name,
+		KeyPrefix:   key.KeyPrefix,
+		Status:      key.Status,
 		CreatedAt:   key.CreatedAt,
 		RevokedAt:   key.RevokedAt,
 	})
 }
 
-// DELETE /v1/clientapps/:clientAppId/apikeys/:keyId
+// DELETE /v1/clientapps/:id/apikeys/:keyId
 func DeleteApiKey(c *gin.Context) {
-	clientAppID := c.Param("clientAppId")
+	clientAppID := c.Param("id")
 	keyID := c.Param("keyId")
 
 	if err := config.DB.Where("client_app_id = ? AND id = ?", clientAppID, keyID).Delete(&models.ApiKey{}).Error; err != nil {
@@ -147,9 +155,9 @@ func DeleteApiKey(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "API Key deleted successfully"})
 }
 
-// POST /v1/clientapps/:clientAppId/apikeys/:keyId/regenerate
+// POST /v1/clientapps/:id/apikeys/:keyId/regenerate
 func RegenerateApiKey(c *gin.Context) {
-	clientAppID := c.Param("clientAppId")
+	clientAppID := c.Param("id")
 	keyID := c.Param("keyId")
 
 	var key models.ApiKey
@@ -158,7 +166,7 @@ func RegenerateApiKey(c *gin.Context) {
 		return
 	}
 
-	newPrefix := generateNewKey()
+	newPrefix := key.Name + "_" + clientAppID + "_" + time.Now().UTC().Format("20060102150405")
 	key.KeyPrefix = newPrefix
 
 	if err := config.DB.Save(&key).Error; err != nil {
@@ -169,14 +177,10 @@ func RegenerateApiKey(c *gin.Context) {
 	c.JSON(http.StatusOK, models.ApiKeyResponse{
 		ID:          key.ID,
 		ClientAppID: key.ClientAppID,
+		Name:        key.Name,
 		KeyPrefix:   key.KeyPrefix,
 		Status:      key.Status,
 		CreatedAt:   key.CreatedAt,
 		RevokedAt:   key.RevokedAt,
 	})
-}
-
-func generateNewKey() string {
-	// Gerador simples — substitua por algo mais seguro se necessário
-	return "key_" + uuid.NewString()[:8]
 }
