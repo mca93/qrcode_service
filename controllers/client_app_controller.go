@@ -44,7 +44,7 @@ func CreateClientApp(c *gin.Context) {
 
 // GET /v1/clientapps
 func ListClientApps(c *gin.Context) {
-	var clientApps []models.ClientApp
+	var clientApps []models.ClientAppListResponse
 	if err := config.DB.Find(&clientApps).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to fetch client apps"})
 		return
@@ -56,7 +56,7 @@ func ListClientApps(c *gin.Context) {
 // GET /v1/clientapps/:id
 func GetClientApp(c *gin.Context) {
 	clientAppID := c.Param("id")
-	var clientApp models.ClientApp
+	var clientApp models.ClientAppResponse
 
 	if err := config.DB.First(&clientApp, "id = ?", clientAppID).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "client app not found"})
@@ -81,7 +81,7 @@ func UpdateClientApp(c *gin.Context) {
 		return
 	}
 
-	var clientApp models.ClientApp
+	var clientApp models.ClientAppResponse
 
 	if err := config.DB.First(&clientApp, "id = ?", clientAppID).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "client app not found"})
