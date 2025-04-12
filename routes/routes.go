@@ -11,7 +11,6 @@ func SetupRoutes(router *gin.Engine) {
 	v1 := router.Group("/v1", middleware.ApiKeyAuthMiddleware())
 	{
 		v1.GET("/clientapps", controllers.ListClientApps)
-		v1.POST("/clientapps", controllers.CreateClientApp)
 
 		v1.GET("/clientapps/:clientAppId/apikeys", controllers.ListApiKeys)
 		v1.POST("/clientapps/:clientAppId/apikeys", controllers.CreateApiKey)
@@ -22,6 +21,7 @@ func SetupRoutes(router *gin.Engine) {
 		v1.GET("/templates", controllers.ListTemplates)
 		v1.POST("/templates", controllers.CreateTemplate)
 	}
+	v1.POST("/clientapps", controllers.CreateClientApp)
 	v1.GET("/qrcodes/:id/image", controllers.GetQRCodeImage)
 
 }
