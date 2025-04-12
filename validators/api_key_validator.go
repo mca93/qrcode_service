@@ -23,8 +23,8 @@ func ValidateApiKeyCreate(req models.ApiKeyCreateRequest, clientAppID string) (s
 	}
 
 	// Validação do status
-	if !isValidApiKeyStatus(req.Status) {
-		return "", errors.New("invalid API key status")
+	if req.Status == "" {
+		req.Status = models.ApiKeyStatusActive
 	}
 
 	// Geração do prefixo
@@ -34,6 +34,19 @@ func ValidateApiKeyCreate(req models.ApiKeyCreateRequest, clientAppID string) (s
 	return keyPrefix, nil
 }
 
+// ✅ Validação para atualização
+func ValidateApiKeyUpdate(req models.ApiKeyUpdateRequest) error {
+	if req.Name != "" && !oneWordRegex.MatchString(req.Name) {
+
+		return errors.New("name must be a single word (alphanumeric only)")
+	}
+
+	if req.Status != "" && !isValidApiKeyStatus(req.Status) {
+		return errors.New("invalid API key status")
+	}
+
+	return nil
+}
 func isValidApiKeyStatus(status models.ApiKeyStatus) bool {
 	switch status {
 	case models.ApiKeyStatusUnspecified, models.ApiKeyStatusActive, models.ApiKeyStatusRevoked:
