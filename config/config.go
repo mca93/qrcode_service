@@ -2,8 +2,10 @@ package config
 
 import (
 	"fmt"
+	"log"
 	"os"
 
+	"github.com/mca93/qrcode_service/models"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
@@ -20,6 +22,13 @@ func InitDB() {
 	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
 	if err != nil {
 		panic("failed to connect to database: " + err.Error())
+	}
+
+	// 👉 AutoMigrate para criar tabelas se não existirem
+	err = db.AutoMigrate(&models.ClientApp{} /*&models.ApiKey{}/* &models.Template{},*/ /*&models.QRCode{}*/)
+	// &models.Template{}, &models.QRCode{})
+	if err != nil {
+		log.Fatal("failed to migrate tables: ", err)
 	}
 	DB = db
 }
