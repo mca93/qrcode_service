@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/google/uuid"
@@ -44,13 +45,67 @@ func CreateClientApp(c *gin.Context) {
 
 // GET /v1/clientapps
 func ListClientApps(c *gin.Context) {
-	var clientApps []models.ClientAppListResponse
-	if err := config.DB.Find(&clientApps).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to fetch client apps"})
+	// Query Params
+	status := c.DefaultQuery("status", string(models.ClientAppStatusUnspecified))
+	pageStr := c.DefaultQuery("page", "1")
+	pageSizeStr := c.DefaultQuery("pageSize", "10")
+
+	// Conversão
+	page, _ := strconv.Atoi(pageStr)
+	if page < 1 {
+		page = 1
+	}
+	pageSize, _ := strconv.Atoi(pageSizeStr)
+	if pageSize < 1 {
+		pageSize = 10
+	}
+
+	offset := (page - 1) * pageSize
+
+	// Consulta filtrada e paginada
+	var apps []models.ClientApp
+	var total int64
+
+	query := config.DB.Model(&models.ClientApp{}).Where("status = ?", status)
+	query.Count(&total)
+
+	err := query.Offset(offset).Limit(pageSize).Find(&apps).Error
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Erro ao buscar client apps"})
 		return
 	}
 
-	c.JSON(http.StatusOK, clientApps)
+	// Monta resposta
+	var responses []models.ClientAppResponse
+	for _, a := range apps {
+		responses = append(responses, models.ClientAppResponse{
+			ID:           a.ID,
+			Name:         a.Name,
+			ContactEmail: a.ContactEmail,
+			Status:       a.Status,
+			CreatedAt:    a.CreatedAt,
+			UpdatedAt:    a.CreatedAt,
+			DeletedAt:    nil,
+		})
+	}
+
+	c.JSON(http.StatusOK, models.ClientAppListResponse{
+		ClientApps: responses,
+		TotalCount: int(total),
+		Page:       page,
+		PageSize:   pageSize,
+		TotalPages: (int(total) + pageSize - 1) / pageSize,
+		HasNext:    offset+pageSize < int(total),
+		HasPrev:    page > 1,
+		NextPage:   page + 1,
+		PrevPage:   page - 1,
+		FirstPage:  1,
+		LastPage:   (int(total) + pageSize - 1) / pageSize,
+		FirstItem:  offset + 1,
+		LastItem:   offset + len(apps),
+		ItemsCount: len(apps),
+		Items:      responses,
+	})
 }
 
 // GET /v1/clientapps/:id
