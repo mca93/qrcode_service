@@ -11,17 +11,38 @@ import (
 	"github.com/mca93/qrcode_service/validators"
 )
 
+// CreateTemplate handles the creation of a new template.
 func CreateTemplate(c *gin.Context) {
 	var req models.TemplateCreateRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+
+	// Extract ClientAppID from the header
+	clientAppID := c.GetHeader("ClientAppID")
+	if clientAppID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "ClientAppID header is required"})
+		return
+	}
+
+	// Validate if ClientAppID exists in the database
+	var clientApp models.ClientApp
+	if err := config.DB.First(&clientApp, "id = ?", clientAppID).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "ClientAppID does not exist"})
+		return
+	}
+
+	// Assign ClientAppID to the request
+	req.ClientAppID = clientAppID
+
+	// Validate the request
 	if err := validators.ValidateTemplateCreate(req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
+	// Create the template
 	template := models.Template{
 		ID:          uuid.NewString(),
 		Name:        req.Name,
@@ -33,14 +54,17 @@ func CreateTemplate(c *gin.Context) {
 		UpdatedAt:   time.Now(),
 	}
 
+	// Save the template to the database
 	if err := config.DB.Create(&template).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create template"})
 		return
 	}
 
+	// Return the created template
 	c.JSON(http.StatusOK, template)
 }
 
+// ListTemplates retrieves all templates for a specific ClientAppID.
 func ListTemplates(c *gin.Context) {
 	clientAppID := c.Query("clientAppId")
 	var templates []models.Template
@@ -49,32 +73,37 @@ func ListTemplates(c *gin.Context) {
 	if clientAppID != "" {
 		query = query.Where("client_app_id = ?", clientAppID)
 	}
-	query.Find(&templates)
+
+	if err := query.Find(&templates).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve templates"})
+		return
+	}
 
 	c.JSON(http.StatusOK, templates)
 }
 
+// GetTemplate retrieves a specific template by its ID.
 func GetTemplate(c *gin.Context) {
 	id := c.Param("id")
 	var template models.Template
+
 	if err := config.DB.First(&template, "id = ?", id).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Template not found"})
 		return
 	}
+
 	c.JSON(http.StatusOK, template)
 }
 
+// UpdateTemplate updates an existing template by its ID.
 func UpdateTemplate(c *gin.Context) {
 	id := c.Param("id")
 	var req models.TemplateUpdateRequest
+
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	if err := validators.ValidateTemplateUpdate(req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
 
 	var template models.Template
 	if err := config.DB.First(&template, "id = ?", id).Error; err != nil {
@@ -82,7 +111,7 @@ func UpdateTemplate(c *gin.Context) {
 		return
 	}
 
-	// Atualizações
+	// Apply updates
 	if req.Name != "" {
 		template.Name = req.Name
 	}
@@ -94,20 +123,33 @@ func UpdateTemplate(c *gin.Context) {
 	}
 	template.UpdatedAt = time.Now()
 
-	config.DB.Save(&template)
+	// Save the updated template
+	if err := config.DB.Save(&template).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update template"})
+		return
+	}
+
 	c.JSON(http.StatusOK, template)
 }
 
+// DeactivateTemplate deactivates a template by its ID.
 func DeactivateTemplate(c *gin.Context) {
 	id := c.Param("id")
 	var template models.Template
+
 	if err := config.DB.First(&template, "id = ?", id).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Template not found"})
 		return
 	}
+
 	template.Active = false
 	template.UpdatedAt = time.Now()
 
-	config.DB.Save(&template)
+	// Save the deactivated template
+	if err := config.DB.Save(&template).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to deactivate template"})
+		return
+	}
+
 	c.JSON(http.StatusOK, template)
 }

@@ -15,21 +15,25 @@ const (
 type ApiKey struct {
 	ID          string       `gorm:"primaryKey" json:"id"`
 	Name        string       `json:"name"`
-	ClientAppID string       `json:"clientAppId"`
+	ClientAppID string       `gorm:"not null" json:"clientAppId"`                   // Foreign key to ClientApp
+	ClientApp   ClientApp    `gorm:"foreignKey:ClientAppID;references:ID" json:"-"` // Association with ClientApp
 	KeyPrefix   string       `json:"keyPrefix"`
 	Status      ApiKeyStatus `gorm:"default:API_KEY_STATUS_ACTIVE" json:"status"`
 	CreatedAt   time.Time    `json:"createdAt"`
 	RevokedAt   *time.Time   `json:"revokedAt,omitempty"`
 }
+
 type ApiKeyCreateRequest struct {
 	Name   string       `json:"name" binding:"required"` // Prefixo da chave
 	Status ApiKeyStatus `json:"status"`                  // Status da chave
 }
+
 type ApiKeyUpdateRequest struct {
 	Name        string       `json:"keyPrefix"`   // Prefixo da chave
 	ClientAppID string       `json:"clientAppId"` // ID do aplicativo cliente
 	Status      ApiKeyStatus `json:"status"`      // Status da chave
 }
+
 type ApiKeyResponse struct {
 	ID          string       `json:"id"`                  // ID da chave
 	ClientAppID string       `json:"clientAppId"`         // ID do aplicativo cliente

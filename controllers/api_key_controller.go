@@ -56,6 +56,14 @@ func CreateApiKey(c *gin.Context) {
 		return
 	}
 
+	// 🔐 Verifica se o clientApp existe
+	var clientApp models.ClientApp
+	if err := config.DB.First(&clientApp, "id = ?", clientAppID).Error; err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid clientAppId: client app does not exist"})
+		return
+	}
+
+	// ✅ Validação e prefixo
 	keyPrefix, err := validators.ValidateApiKeyCreate(req, clientAppID)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -67,7 +75,7 @@ func CreateApiKey(c *gin.Context) {
 		Name:        req.Name,
 		ClientAppID: clientAppID,
 		KeyPrefix:   keyPrefix,
-		Status:      models.ApiKeyStatusActive,
+		Status:      req.Status,
 		CreatedAt:   time.Now(),
 	}
 
@@ -76,14 +84,7 @@ func CreateApiKey(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, models.ApiKeyResponse{
-		ID:          apiKey.ID,
-		ClientAppID: apiKey.ClientAppID,
-		Name:        apiKey.Name,
-		KeyPrefix:   apiKey.KeyPrefix,
-		Status:      apiKey.Status,
-		CreatedAt:   apiKey.CreatedAt,
-	})
+	c.JSON(http.StatusOK, toApiKeyResponse(apiKey))
 }
 
 // GET /v1/clientapps/:id/apikeys/:keyId
@@ -189,4 +190,17 @@ func RegenerateApiKey(c *gin.Context) {
 		CreatedAt:   key.CreatedAt,
 		RevokedAt:   key.RevokedAt,
 	})
+}
+
+// Helper para converter para ApiKeyResponse
+func toApiKeyResponse(key models.ApiKey) models.ApiKeyResponse {
+	return models.ApiKeyResponse{
+		ID:          key.ID,
+		ClientAppID: key.ClientAppID,
+		Name:        key.Name,
+		KeyPrefix:   key.KeyPrefix,
+		Status:      key.Status,
+		CreatedAt:   key.CreatedAt,
+		RevokedAt:   key.RevokedAt,
+	}
 }

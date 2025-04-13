@@ -33,7 +33,8 @@ type Template struct {
 	ID          string      `gorm:"primaryKey" json:"id"`
 	Name        string      `json:"name"`
 	Description string      `json:"description"`
-	ClientAppID string      `json:"clientAppId"`
+	ClientAppID string      `gorm:"not null" json:"clientAppId"`                   // Foreign key to ClientApp
+	ClientApp   ClientApp   `gorm:"foreignKey:ClientAppID;references:ID" json:"-"` // Association with ClientApp
 	Style       QRCodeStyle `gorm:"type:jsonb" json:"style"`
 	Active      bool        `json:"active"`
 	CreatedAt   time.Time   `json:"createdAt"`
