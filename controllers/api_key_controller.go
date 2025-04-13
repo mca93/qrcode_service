@@ -75,7 +75,7 @@ func CreateApiKey(c *gin.Context) {
 		Name:        req.Name,
 		ClientAppID: clientAppID,
 		KeyPrefix:   keyPrefix,
-		Status:      req.Status,
+		Status:      models.ApiKeyStatusActive,
 		CreatedAt:   time.Now(),
 	}
 

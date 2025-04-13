@@ -23,8 +23,8 @@ func ValidateApiKeyCreate(req models.ApiKeyCreateRequest, clientAppID string) (s
 	}
 
 	// Validação do status
-	if req.Status == "" {
-		req.Status = models.ApiKeyStatusActive
+	if req.Status != "" && !isValidApiKeyStatus(req.Status) {
+		return "", errors.New("invalid API key status")
 	}
 
 	// Geração do prefixo
