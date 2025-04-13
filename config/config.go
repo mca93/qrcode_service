@@ -25,8 +25,8 @@ func InitDB() {
 	}
 
 	// 👉 AutoMigrate para criar tabelas se não existirem
-	err = db.AutoMigrate(&models.ClientApp{}, &models.ApiKey{})
-	// &models.Template{}, &models.QRCode{})
+	err = db.AutoMigrate(&models.ClientApp{}, &models.ApiKey{}, &models.Template{})
+	//&models.QRCode{})
 	if err != nil {
 		log.Fatal("failed to migrate tables: ", err)
 	}
