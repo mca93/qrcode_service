@@ -15,14 +15,9 @@ import (
 func CreateTemplate(c *gin.Context) {
 	var req models.TemplateCreateRequest
 	clientAppID := c.GetHeader("client_app_id")
+
 	if clientAppID == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "ClientAppID is required"})
-		return
-	}
-
-	// Bind the JSON request to the TemplateCreateRequest struct
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
@@ -34,6 +29,12 @@ func CreateTemplate(c *gin.Context) {
 	}
 
 	req.ClientAppID = clientAppID
+
+	// Bind the JSON request to the TemplateCreateRequest struct
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
 	// Validate the request
 	if err := validators.ValidateTemplateCreate(req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
