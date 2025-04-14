@@ -20,6 +20,7 @@ type ApiKey struct {
 	KeyPrefix   string       `json:"keyPrefix"`
 	Status      ApiKeyStatus `gorm:"default:API_KEY_STATUS_ACTIVE" json:"status"`
 	CreatedAt   time.Time    `json:"createdAt"`
+	UpdatedAt   time.Time    `json:"updatedAt"`
 	RevokedAt   *time.Time   `json:"revokedAt,omitempty"`
 }
 

@@ -31,14 +31,13 @@ func CreateTemplate(c *gin.Context) {
 
 	// Assign ClientAppID to the request
 	req.ClientAppID = clientAppID
-	// Bind the JSON request to the TemplateCreateRequest struct
-	// and validate the request
+
+	// Bind the JSON request to the TemplateCreateRequest struct and validate the request
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	// Validate the reques
 	if err := validators.ValidateTemplateCreate(req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -69,14 +68,13 @@ func CreateTemplate(c *gin.Context) {
 // ListTemplates retrieves all templates for a specific ClientAppID.
 func ListTemplates(c *gin.Context) {
 	clientAppID := c.Query("clientAppId")
-	var templates []models.Template
-
-	query := config.DB
-	if clientAppID != "" {
-		query = query.Where("client_app_id = ?", clientAppID)
+	if clientAppID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "ClientAppID query parameter is required"})
+		return
 	}
 
-	if err := query.Find(&templates).Error; err != nil {
+	var templates []models.Template
+	if err := config.DB.Where("client_app_id = ?", clientAppID).Find(&templates).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve templates"})
 		return
 	}
@@ -87,10 +85,22 @@ func ListTemplates(c *gin.Context) {
 // GetTemplate retrieves a specific template by its ID.
 func GetTemplate(c *gin.Context) {
 	id := c.Param("id")
-	var template models.Template
+	clientAppID := c.GetHeader("ClientAppID")
 
+	if clientAppID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "ClientAppID header is required"})
+		return
+	}
+
+	var template models.Template
 	if err := config.DB.First(&template, "id = ?", id).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Template not found"})
+		return
+	}
+
+	// Check if the requesting ClientAppID matches the template's ClientAppID
+	if template.ClientAppID != clientAppID {
+		c.JSON(http.StatusForbidden, gin.H{"error": "You do not have permission to access this template"})
 		return
 	}
 
@@ -100,8 +110,14 @@ func GetTemplate(c *gin.Context) {
 // UpdateTemplate updates an existing template by its ID.
 func UpdateTemplate(c *gin.Context) {
 	id := c.Param("id")
-	var req models.TemplateUpdateRequest
+	clientAppID := c.GetHeader("ClientAppID")
 
+	if clientAppID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "ClientAppID header is required"})
+		return
+	}
+
+	var req models.TemplateUpdateRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -110,6 +126,12 @@ func UpdateTemplate(c *gin.Context) {
 	var template models.Template
 	if err := config.DB.First(&template, "id = ?", id).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Template not found"})
+		return
+	}
+
+	// Check if the requesting ClientAppID matches the template's ClientAppID
+	if template.ClientAppID != clientAppID {
+		c.JSON(http.StatusForbidden, gin.H{"error": "You do not have permission to update this template"})
 		return
 	}
 
@@ -137,10 +159,22 @@ func UpdateTemplate(c *gin.Context) {
 // DeactivateTemplate deactivates a template by its ID.
 func DeactivateTemplate(c *gin.Context) {
 	id := c.Param("id")
-	var template models.Template
+	clientAppID := c.GetHeader("ClientAppID")
 
+	if clientAppID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "ClientAppID header is required"})
+		return
+	}
+
+	var template models.Template
 	if err := config.DB.First(&template, "id = ?", id).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Template not found"})
+		return
+	}
+
+	// Check if the requesting ClientAppID matches the template's ClientAppID
+	if template.ClientAppID != clientAppID {
+		c.JSON(http.StatusForbidden, gin.H{"error": "You do not have permission to deactivate this template"})
 		return
 	}
 
