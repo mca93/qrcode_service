@@ -1,67 +1,125 @@
 package validators
 
 import (
+	"encoding/json"
 	"errors"
-	"regexp"
-	"strings"
+	"fmt"
 
 	"github.com/mca93/qrcode_service/models"
 )
 
+// ValidateTemplateCreate validates the TemplateCreateRequest.
 func ValidateTemplateCreate(req models.TemplateCreateRequest) error {
-	if strings.TrimSpace(req.Name) == "" {
+	// Validate Name
+	if req.Name == "" {
 		return errors.New("name is required")
 	}
-	if strings.TrimSpace(req.ClientAppID) == "" {
+
+	// Validate ClientAppID
+	if req.ClientAppID == "" {
 		return errors.New("clientAppId is required")
 	}
-	return validateStyle(req.Style)
-}
 
-func ValidateTemplateUpdate(req models.TemplateUpdateRequest) error {
-	if req.Style != nil {
-		return validateStyle(*req.Style)
+	// Validate Metadata
+	if err := validateMetadata(req.Metadata); err != nil {
+		return fmt.Errorf("invalid metadata: %w", err)
 	}
+
 	return nil
 }
 
-func validateStyle(style models.QRCodeStyle) error {
-	// Validate size
-	if style.Size <= 0 {
-		return errors.New("invalid size")
+// ValidateTemplateUpdate validates the TemplateUpdateRequest.
+func ValidateTemplateUpdate(req models.TemplateUpdateRequest) error {
+	// Validate Metadata (if provided)
+	if req.Metadata != nil {
+		if err := validateMetadata(*req.Metadata); err != nil {
+			return fmt.Errorf("invalid metadata: %w", err)
+		}
 	}
 
-	// Validate margin
+	return nil
+}
+
+// validateMetadata validates the MetadataDefinition.
+func validateMetadata(metadata models.MetadataDefinition) error {
+	// Ensure Metadata contains exactly two objects
+	if len(metadata.Fields) != 2 {
+		return errors.New("metadata must contain exactly two objects")
+	}
+
+	// Validate each field in Metadata
+	for _, field := range metadata.Fields {
+		if field.Type == models.FieldType(models.MetadataTypeStyle) {
+			// Validate the Style object
+			if err := validateQRCodeStyle(field.Validations); err != nil {
+				return fmt.Errorf("invalid style object: %w", err)
+			}
+		} else {
+			// Validate other field types
+			if err := field.Validate(); err != nil {
+				return fmt.Errorf("invalid field: %w", err)
+			}
+		}
+	}
+
+	return nil
+}
+
+func isValidType(metaDatatype models.MetadataType) bool {
+	switch metaDatatype {
+	case models.MetadataTypeContent, models.MetadataTypeStyle:
+		return true
+	default:
+		return false
+	}
+}
+
+// validateQRCodeStyle validates the QRCodeStyle object.
+func validateQRCodeStyle(validations map[string]interface{}) error {
+	// Convert the map to a QRCodeStyle struct
+	var style models.QRCodeStyle
+	data, err := json.Marshal(validations)
+	if err != nil {
+		return fmt.Errorf("failed to marshal style validations: %w", err)
+	}
+	if err := json.Unmarshal(data, &style); err != nil {
+		return fmt.Errorf("failed to unmarshal style validations: %w", err)
+	}
+
+	// Validate individual fields in QRCodeStyle
+	if style.Shape == "" {
+		return errors.New("shape is required")
+	}
+	if style.ForegroundColor == "" {
+		return errors.New("foregroundColor is required")
+	}
+	if style.BackgroundColor == "" {
+		return errors.New("backgroundColor is required")
+	}
+	if style.Size <= 0 {
+		return errors.New("size must be greater than 0")
+	}
 	if style.Margin < 0 {
 		return errors.New("margin cannot be negative")
 	}
-
-	// Validate error correction level
-	switch style.ErrorCorrection {
-	case models.ErrorCorrectionL, models.ErrorCorrectionM, models.ErrorCorrectionQ, models.ErrorCorrectionH:
-	default:
-		return errors.New("invalid errorCorrection (must be L, M, Q, or H)")
+	if style.CornerRadius < 0 {
+		return errors.New("cornerRadius cannot be negative")
 	}
-
-	// Validate HEX color fields
-	if !isValidHexColor(style.ForegroundColor) {
-		return errors.New("invalid foregroundColor (must be a valid HEX color)")
+	if style.Gradient && style.GradientColor == "" {
+		return errors.New("gradientColor is required when gradient is true")
 	}
-	if !isValidHexColor(style.BackgroundColor) {
-		return errors.New("invalid backgroundColor (must be a valid HEX color)")
+	if style.Border < 0 {
+		return errors.New("border cannot be negative")
 	}
-	if style.Gradient && !isValidHexColor(style.GradientColor) {
-		return errors.New("invalid gradientColor (must be a valid HEX color)")
+	if style.BorderColor == "" && style.Border > 0 {
+		return errors.New("borderColor is required when border is greater than 0")
 	}
-	if !isValidHexColor(style.BorderColor) {
-		return errors.New("invalid borderColor (must be a valid HEX color)")
+	if style.ErrorCorrection != models.ErrorCorrectionL &&
+		style.ErrorCorrection != models.ErrorCorrectionM &&
+		style.ErrorCorrection != models.ErrorCorrectionQ &&
+		style.ErrorCorrection != models.ErrorCorrectionH {
+		return errors.New("invalid errorCorrection value")
 	}
 
 	return nil
-}
-
-// isValidHexColor validates if a string is a valid HEX color.
-func isValidHexColor(color string) bool {
-	hexColorRegex := regexp.MustCompile(`^#(?:[0-9a-fA-F]{3}){1,2}$`)
-	return hexColorRegex.MatchString(color)
 }

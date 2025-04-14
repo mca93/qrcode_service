@@ -1,6 +1,9 @@
 package models
 
 import (
+	"database/sql/driver"
+	"encoding/json"
+	"errors"
 	"time"
 )
 
@@ -63,4 +66,27 @@ type QRCodeResponse struct {
 	TemplateID    string                 `json:"templateId"`
 	ThirdPartyRef string                 `json:"third_party_ref"`
 	Data          map[string]interface{} `json:"data"` // Custom key-value data
+}
+
+// --------- JSONMap para Style -----------
+
+type JSONMap map[string]interface{}
+
+func (j *JSONMap) Scan(value interface{}) error {
+	if value == nil {
+		*j = nil
+		return nil
+	}
+	bytes, ok := value.([]uint8)
+	if !ok {
+		return errors.New("failed to scan JSONMap: type assertion to []uint8 failed")
+	}
+	return json.Unmarshal(bytes, j)
+}
+
+func (j JSONMap) Value() (driver.Value, error) {
+	if j == nil {
+		return nil, nil
+	}
+	return json.Marshal(j)
 }

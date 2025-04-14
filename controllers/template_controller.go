@@ -35,26 +35,11 @@ func CreateTemplate(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+
 	// Validate the request
 	if err := validators.ValidateTemplateCreate(req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
-	}
-	// Convert QRCodeStyle to map[string]interface{} for the Style field
-	styleMap := map[string]interface{}{
-		"shape":           req.Style.Shape,
-		"foregroundColor": req.Style.ForegroundColor,
-		"backgroundColor": req.Style.BackgroundColor,
-		"size":            req.Style.Size,
-		"margin":          req.Style.Margin,
-		"cornerRadius":    req.Style.CornerRadius,
-		"gradient":        req.Style.Gradient,
-		"gradientColor":   req.Style.GradientColor,
-		"gradientAngle":   req.Style.GradientAngle,
-		"border":          req.Style.Border,
-		"borderColor":     req.Style.BorderColor,
-		"logoUrl":         req.Style.LogoURL,
-		"errorCorrection": req.Style.ErrorCorrection,
 	}
 
 	// Create the template
@@ -63,7 +48,7 @@ func CreateTemplate(c *gin.Context) {
 		Name:        req.Name,
 		Description: req.Description,
 		ClientAppID: req.ClientAppID,
-		Style:       styleMap,
+		Metadata:    req.Metadata,
 		Active:      true,
 		CreatedAt:   time.Now(),
 		UpdatedAt:   time.Now(),
@@ -156,6 +141,14 @@ func UpdateTemplate(c *gin.Context) {
 		return
 	}
 
+	// Validate the update request
+	if req.Metadata != nil {
+		if err := validators.ValidateTemplateUpdate(req); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+	}
+
 	// Apply updates
 	if req.Name != "" {
 		template.Name = req.Name
@@ -163,9 +156,9 @@ func UpdateTemplate(c *gin.Context) {
 	if req.Description != "" {
 		template.Description = req.Description
 	}
-	// if req.Style != nil {
-	// 	template.Style = *req.Style
-	// }
+	if req.Metadata != nil {
+		template.Metadata = *req.Metadata
+	}
 	template.UpdatedAt = time.Now()
 
 	// Save the updated template
