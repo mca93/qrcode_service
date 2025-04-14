@@ -8,11 +8,17 @@ import (
 	"github.com/google/uuid"
 	"github.com/mca93/qrcode_service/config"
 	"github.com/mca93/qrcode_service/models"
+	"github.com/mca93/qrcode_service/validators"
 )
 
 // CreateTemplate handles the creation of a new template.
 func CreateTemplate(c *gin.Context) {
 	var req models.TemplateCreateRequest
+	clientAppID := c.GetHeader("client_app_id")
+	if clientAppID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "ClientAppID is required"})
+		return
+	}
 
 	// Bind the JSON request to the TemplateCreateRequest struct
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -27,6 +33,12 @@ func CreateTemplate(c *gin.Context) {
 		return
 	}
 
+	req.ClientAppID = clientAppID
+	// Validate the request
+	if err := validators.ValidateTemplateCreate(req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
 	// Convert QRCodeStyle to map[string]interface{} for the Style field
 	styleMap := map[string]interface{}{
 		"shape":           req.Style.Shape,
