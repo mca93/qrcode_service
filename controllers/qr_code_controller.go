@@ -3,6 +3,7 @@ package controllers
 import (
 	"net/http"
 
+	"github.com/google/uuid"
 	"github.com/mca93/qrcode_service/config"
 	"github.com/mca93/qrcode_service/models"
 	"github.com/mca93/qrcode_service/validators"
@@ -74,6 +75,7 @@ func CreateQRCode(c *gin.Context) {
 
 	// Create the QR code
 	qrCode := models.QRCode{
+		ID:           uuid.NewString(),
 		Type:         req.Type,
 		ExpiresAt:    req.ExpiresAt,
 		ClientAppID:  req.ClientAppID,
