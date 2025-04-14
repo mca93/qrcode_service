@@ -74,7 +74,7 @@ func ListTemplates(c *gin.Context) {
 	}
 
 	var templates []models.Template
-	if err := config.DB.Where("clientAppID = ?", clientAppID).Find(&templates).Error; err != nil {
+	if err := config.DB.Where("client_app_id = ?", clientAppID).Find(&templates).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve templates"})
 		return
 	}
