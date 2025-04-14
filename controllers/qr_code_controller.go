@@ -75,13 +75,13 @@ func CreateQRCode(c *gin.Context) {
 
 	// Create the QR code
 	qrCode := models.QRCode{
-		ID:           uuid.NewString(),
-		Type:         req.Type,
-		ExpiresAt:    req.ExpiresAt,
-		ClientAppID:  req.ClientAppID,
-		TemplateID:   req.TemplateID,
-		ThirdPartRef: req.ThirdPartRef,
-		Data:         req.Data,
+		ID:            uuid.NewString(),
+		Type:          req.Type,
+		ExpiresAt:     req.ExpiresAt,
+		ClientAppID:   req.ClientAppID,
+		TemplateID:    req.TemplateID,
+		ThirdPartyRef: req.ThirdPartyRef,
+		Data:          req.Data,
 	}
 
 	config.DB.Create(&qrCode)
