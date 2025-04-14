@@ -73,14 +73,6 @@ func ListTemplates(c *gin.Context) {
 		return
 	}
 
-	// Validate if ClientAppID exists in the database
-	var clientApp models.ClientApp
-	if err := config.DB.First(&clientApp, "id = ?", clientAppID).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "ClientAppID does not exist"})
-		return
-	}
-	// Fetch templates for the given ClientAppID
-
 	var templates []models.Template
 	if err := config.DB.Where("client_app_id = ?", clientAppID).Find(&templates).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve templates"})
@@ -150,9 +142,9 @@ func UpdateTemplate(c *gin.Context) {
 	if req.Description != "" {
 		template.Description = req.Description
 	}
-	if req.Style != nil {
-		template.Style = *req.Style
-	}
+	// if req.Style != nil {
+	// 	template.Style = *req.Style
+	// }
 	template.UpdatedAt = time.Now()
 
 	// Save the updated template
