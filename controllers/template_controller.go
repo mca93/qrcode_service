@@ -23,7 +23,7 @@ func CreateTemplate(c *gin.Context) {
 
 	// Validate if ClientAppID exists in the database
 	var clientApp models.ClientApp
-	if err := config.DB.First(&clientApp, "id = ?", req.ClientAppID).Error; err != nil {
+	if err := config.DB.First(&clientApp, "id = ?", clientAppID).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "ClientAppID does not exist"})
 		return
 	}
