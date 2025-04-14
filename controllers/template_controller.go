@@ -69,9 +69,17 @@ func CreateTemplate(c *gin.Context) {
 func ListTemplates(c *gin.Context) {
 	clientAppID := c.GetHeader("client_app_id")
 	if clientAppID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "ClientAppID query parameter is required"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "ClientAppID is required"})
 		return
 	}
+
+	// Validate if ClientAppID exists in the database
+	var clientApp models.ClientApp
+	if err := config.DB.First(&clientApp, "id = ?", clientAppID).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "ClientAppID does not exist"})
+		return
+	}
+	// Fetch templates for the given ClientAppID
 
 	var templates []models.Template
 	if err := config.DB.Where("client_app_id = ?", clientAppID).Find(&templates).Error; err != nil {
