@@ -67,7 +67,7 @@ func CreateTemplate(c *gin.Context) {
 
 // ListTemplates retrieves all templates for a specific ClientAppID.
 func ListTemplates(c *gin.Context) {
-	clientAppID := c.Query("clientAppId")
+	clientAppID := c.GetHeader("client_app_id")
 	if clientAppID == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "ClientAppID query parameter is required"})
 		return
