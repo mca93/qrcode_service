@@ -14,11 +14,22 @@ import (
 // ListQRCodes retrieves all QR codes for the authenticated client app.
 func ListQRCodes(c *gin.Context) {
 	clientAppID := c.GetHeader("client_app_id")
+
 	if clientAppID == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "clientAppId header is required"})
 		return
 	}
-
+	// Validate the client app ID
+	var clientApp models.ClientApp
+	if err := config.DB.First(&clientApp, "id = ?", clientAppID).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Client app not found"})
+		return
+	}
+	// Check if the client app is active
+	if clientApp.Status != models.ClientAppStatusActive {
+		c.JSON(http.StatusForbidden, gin.H{"error": "Client app is not active"})
+		return
+	}
 	var codes []models.QRCode
 	if err := config.DB.Where("client_app_id = ?", clientAppID).Find(&codes).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve QR codes"})
@@ -31,15 +42,26 @@ func ListQRCodes(c *gin.Context) {
 // CreateQRCode creates a new QR code.
 func CreateQRCode(c *gin.Context) {
 	clientAppID := c.GetHeader("client_app_id")
-	if clientAppID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "clientAppId header is required"})
-		return
-	}
 
 	var req models.QRCodeCreateRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
+	}
+
+	//Validate template
+	if req.TemplateID != "" {
+		var template models.Template
+		if err := config.DB.First(&template, "id = ?", req.TemplateID).Error; err != nil {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Template not found"})
+			return
+		}
+
+		if template.ClientAppID != clientAppID {
+			c.JSON(http.StatusForbidden, gin.H{"error": "You do not have permission to use this template"})
+			return
+		}
+
 	}
 
 	// Validate the request

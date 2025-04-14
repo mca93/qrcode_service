@@ -25,9 +25,9 @@ func ValidateQRCodeCreate(req models.QRCodeCreateRequest, clientAppID string) er
 	}
 
 	// Ensure the ClientAppID in the header matches the request
-	if req.ClientAppID != "" && req.ClientAppID != clientAppID {
-		return errors.New("clientAppId in the request does not match the clientAppId in the header")
-	}
+	// if req.ClientAppID != "" && req.ClientAppID != clientAppID {
+	// 	return errors.New("clientAppId in the request does not match the clientAppId in the header")
+	// }
 
 	// Validate ExpiresAt (if provided)
 	if req.ExpiresAt != nil && req.ExpiresAt.Before(time.Now()) {
