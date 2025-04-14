@@ -93,7 +93,7 @@ func GetTemplate(c *gin.Context) {
 	}
 
 	var template models.Template
-	if err := config.DB.First(&template, "id = ?", id).Error; err != nil {
+	if err := config.DB.First("id = ?", id).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Template not found"})
 		return
 	}
