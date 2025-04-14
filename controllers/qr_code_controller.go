@@ -44,6 +44,8 @@ func CreateQRCode(c *gin.Context) {
 	clientAppID := c.GetHeader("client_app_id")
 
 	var req models.QRCodeCreateRequest
+	req.ClientAppID = clientAppID
+
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
