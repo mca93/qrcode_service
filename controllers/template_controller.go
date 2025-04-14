@@ -16,9 +16,9 @@ func CreateTemplate(c *gin.Context) {
 	var req models.TemplateCreateRequest
 
 	// Extract ClientAppID from the header
-	clientAppID := c.GetHeader("ClientAppID")
+	clientAppID := c.GetHeader("client_app_id")
 	if clientAppID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "ClientAppID header is required"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "client_app_id header is required"})
 		return
 	}
 
@@ -85,7 +85,7 @@ func ListTemplates(c *gin.Context) {
 // GetTemplate retrieves a specific template by its ID.
 func GetTemplate(c *gin.Context) {
 	id := c.Param("id")
-	clientAppID := c.GetHeader("ClientAppID")
+	clientAppID := c.GetHeader("client_app_id")
 
 	if clientAppID == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "ClientAppID header is required"})
@@ -110,10 +110,10 @@ func GetTemplate(c *gin.Context) {
 // UpdateTemplate updates an existing template by its ID.
 func UpdateTemplate(c *gin.Context) {
 	id := c.Param("id")
-	clientAppID := c.GetHeader("ClientAppID")
+	clientAppID := c.GetHeader("client_app_id")
 
 	if clientAppID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "ClientAppID header is required"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "client_app_id header is required"})
 		return
 	}
 
@@ -159,10 +159,10 @@ func UpdateTemplate(c *gin.Context) {
 // DeactivateTemplate deactivates a template by its ID.
 func DeactivateTemplate(c *gin.Context) {
 	id := c.Param("id")
-	clientAppID := c.GetHeader("ClientAppID")
+	clientAppID := c.GetHeader("client_app_id")
 
 	if clientAppID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "ClientAppID header is required"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "client_app_id header is required"})
 		return
 	}
 
