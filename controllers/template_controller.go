@@ -21,6 +21,7 @@ func CreateTemplate(c *gin.Context) {
 	}
 
 	var req models.TemplateCreateRequest
+	req.ClientAppID = clientAppID
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
