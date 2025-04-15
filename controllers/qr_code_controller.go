@@ -58,7 +58,7 @@ func CreateQRCode(c *gin.Context) {
 
 	// Fetch the template to validate the Data field
 	var template models.Template
-	if err := config.DB.Preload("Metadata").First(&template, "id = ?", req.TemplateID).Error; err != nil {
+	if err := config.DB.First(&template, "id = ?", req.TemplateID).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Template not found"})
 		return
 	}
