@@ -21,8 +21,13 @@ func ValidateTemplateCreate(req models.TemplateCreateRequest) error {
 	}
 
 	// Validate Metadata
-	if err := validateMetadata(req.Metadata); err != nil {
-		return fmt.Errorf("invalid metadata: %w", err)
+	if len(req.Metadata) != 2 {
+		return errors.New("metadata must contain exactly two objects")
+	}
+	for _, metadata := range req.Metadata {
+		if err := validateMetadata(metadata); err != nil {
+			return fmt.Errorf("invalid metadata: %w", err)
+		}
 	}
 
 	return nil
@@ -32,24 +37,29 @@ func ValidateTemplateCreate(req models.TemplateCreateRequest) error {
 func ValidateTemplateUpdate(req models.TemplateUpdateRequest) error {
 	// Validate Metadata (if provided)
 	if req.Metadata != nil {
-		if err := validateMetadata(*req.Metadata); err != nil {
-			return fmt.Errorf("invalid metadata: %w", err)
+		if len(*req.Metadata) != 2 {
+			return errors.New("metadata must contain exactly two objects")
+		}
+		for _, metadata := range *req.Metadata {
+			if err := validateMetadata(metadata); err != nil {
+				return fmt.Errorf("invalid metadata: %w", err)
+			}
 		}
 	}
 
 	return nil
 }
 
-// validateMetadata validates the MetadataDefinition.
+// validateMetadata validates a single MetadataDefinition.
 func validateMetadata(metadata models.MetadataDefinition) error {
-	// Ensure Metadata contains exactly two objects
-	if len(metadata.Fields) != 2 {
-		return errors.New("metadata must contain exactly two objects")
+	// Validate Metadata Type
+	if !metadata.Type.IsValid() {
+		return fmt.Errorf("invalid metadata type: %s", metadata.Type)
 	}
 
-	// Validate each field in Metadata
+	// Validate Fields
 	for _, field := range metadata.Fields {
-		if field.Type == models.FieldType(models.MetadataTypeStyle) {
+		if metadata.Type == models.MetadataTypeStyle {
 			// Validate the Style object
 			if err := validateQRCodeStyle(field.Validations); err != nil {
 				return fmt.Errorf("invalid style object: %w", err)
@@ -63,15 +73,6 @@ func validateMetadata(metadata models.MetadataDefinition) error {
 	}
 
 	return nil
-}
-
-func isValidType(metaDatatype models.MetadataType) bool {
-	switch metaDatatype {
-	case models.MetadataTypeContent, models.MetadataTypeStyle:
-		return true
-	default:
-		return false
-	}
 }
 
 // validateQRCodeStyle validates the QRCodeStyle object.

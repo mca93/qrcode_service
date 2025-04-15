@@ -125,31 +125,28 @@ type QRCodeStyle struct {
 // --------- Template -----------
 
 type Template struct {
-	ID          string    `gorm:"primaryKey" json:"id"`
-	Name        string    `json:"name"`
-	Description string    `json:"description"`
-	ClientAppID string    `gorm:"not null" json:"clientAppId"`
-	ClientApp   ClientApp `gorm:"foreignKey:ClientAppID;references:ID" json:"-"`
-	// Style       JSONMap            `gorm:"type:json" json:"style"`
-	Metadata  MetadataDefinition `gorm:"type:json" json:"metadata"`
-	Active    bool               `json:"active"`
-	CreatedAt time.Time          `json:"createdAt"`
-	UpdatedAt time.Time          `json:"updatedAt"`
+	ID          string               `gorm:"primaryKey" json:"id"`
+	Name        string               `json:"name"`
+	Description string               `json:"description"`
+	ClientAppID string               `gorm:"not null" json:"clientAppId"`
+	ClientApp   ClientApp            `gorm:"foreignKey:ClientAppID;references:ID" json:"-"`
+	Metadata    []MetadataDefinition `gorm:"type:json" json:"metadata"` // Changed to an array of objects
+	Active      bool                 `json:"active"`
+	CreatedAt   time.Time            `json:"createdAt"`
+	UpdatedAt   time.Time            `json:"updatedAt"`
 }
 
 // --------- Requests -----------
 
 type TemplateCreateRequest struct {
-	Name        string `json:"name" binding:"required"`
-	Description string `json:"description"`
-	ClientAppID string `json:"clientAppId" binding:"required"`
-	// Style       QRCodeStyle        `json:"style" binding:"required"`
-	Metadata MetadataDefinition `json:"metadata"`
+	Name        string               `json:"name" binding:"required"`
+	Description string               `json:"description"`
+	ClientAppID string               `json:"clientAppId" binding:"required"`
+	Metadata    []MetadataDefinition `json:"metadata"` // Changed to an array of objects
 }
 
 type TemplateUpdateRequest struct {
-	Name        string `json:"name"`
-	Description string `json:"description"`
-	// Style       *QRCodeStyle        `json:"style"`
-	Metadata *MetadataDefinition `json:"metadata"`
+	Name        string                `json:"name"`
+	Description string                `json:"description"`
+	Metadata    *[]MetadataDefinition `json:"metadata"` // Changed to an array of objects
 }
