@@ -2,6 +2,7 @@ package validators
 
 import (
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/mca93/qrcode_service/models"
@@ -92,5 +93,46 @@ func validateCustomData(data map[string]interface{}) error {
 			return errors.New("data contains a nil value for key: " + key)
 		}
 	}
+	return nil
+}
+
+// ValidateQRCodeData validates the Data field of a QR code against the template's metadata of type CONTENT.
+func ValidateQRCodeData(data models.JSONMap, template models.Template) error {
+	// Find the metadata of type CONTENT
+	var contentMetadata *models.MetadataDefinition
+	for _, metadata := range template.Metadata {
+		if metadata.Type == models.MetadataTypeContent {
+			contentMetadata = &metadata
+			break
+		}
+	}
+
+	if contentMetadata == nil {
+		return errors.New("template does not contain metadata of type CONTENT")
+	}
+
+	// Validate that all required fields in the CONTENT metadata are present in the Data field
+	for _, field := range contentMetadata.Fields {
+		// Check if the field is marked as required
+		if required, ok := field.Validations["required"].(bool); ok && required {
+			// Ensure the required field exists in the Data map
+			if _, exists := data[field.Name]; !exists {
+				return fmt.Errorf("missing required field in data: %s", field.Name)
+			}
+		}
+	}
+
+	// Validate that all keys in the Data field match the fields in the CONTENT metadata
+	validKeys := make(map[string]bool)
+	for _, field := range contentMetadata.Fields {
+		validKeys[field.Name] = true
+	}
+
+	for key := range data {
+		if !validKeys[key] {
+			return fmt.Errorf("invalid key in data: %s", key)
+		}
+	}
+
 	return nil
 }

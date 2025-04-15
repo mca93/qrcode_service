@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"net/http"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/mca93/qrcode_service/config"
@@ -40,35 +41,23 @@ func ListQRCodes(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"qr_codes": codes})
 }
 
-// CreateQRCode creates a new QR code.
+// CreateQRCode handles the creation of a new QR code.
 func CreateQRCode(c *gin.Context) {
-	clientAppID := c.GetHeader("client_app_id")
-
 	var req models.QRCodeCreateRequest
-	req.ClientAppID = clientAppID
-
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	//Validate template
-	if req.TemplateID != "" {
-		var template models.Template
-		if err := config.DB.First(&template, "id = ?", req.TemplateID).Error; err != nil {
-			c.JSON(http.StatusNotFound, gin.H{"error": "Template not found"})
-			return
-		}
-
-		if template.ClientAppID != clientAppID {
-			c.JSON(http.StatusForbidden, gin.H{"error": "You do not have permission to use this template"})
-			return
-		}
-
+	// Fetch the template to validate the Data field
+	var template models.Template
+	if err := config.DB.Preload("Metadata").First(&template, "id = ?", req.TemplateID).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Template not found"})
+		return
 	}
 
-	// Validate the request
-	if err := validators.ValidateQRCodeCreate(req, clientAppID); err != nil {
+	// Validate the Data field
+	if err := validators.ValidateQRCodeData(req.Data, template); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
@@ -77,14 +66,24 @@ func CreateQRCode(c *gin.Context) {
 	qrCode := models.QRCode{
 		ID:            uuid.NewString(),
 		Type:          req.Type,
+		CreatedAt:     time.Now(),
 		ExpiresAt:     req.ExpiresAt,
+		Status:        "ACTIVE",
+		ScanCount:     0,
+		ImageURL:      "", // This should be generated later
+		DeepLinkURL:   "", // This should be generated later
 		ClientAppID:   req.ClientAppID,
 		TemplateID:    req.TemplateID,
 		ThirdPartyRef: req.ThirdPartyRef,
 		Data:          req.Data,
 	}
 
-	config.DB.Create(&qrCode)
+	// Save the QR code to the database
+	if err := config.DB.Create(&qrCode).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create QR code"})
+		return
+	}
+
 	c.JSON(http.StatusOK, qrCode)
 }
 

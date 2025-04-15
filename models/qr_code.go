@@ -68,8 +68,7 @@ type QRCodeResponse struct {
 	Data          map[string]interface{} `json:"data"` // Custom key-value data
 }
 
-// --------- JSONMap para Style -----------
-
+// JSONMap is a custom type to handle JSON fields in the database.
 type JSONMap map[string]interface{}
 
 func (j *JSONMap) Scan(value interface{}) error {
