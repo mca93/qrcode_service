@@ -43,7 +43,14 @@ func ListQRCodes(c *gin.Context) {
 
 // CreateQRCode handles the creation of a new QR code.
 func CreateQRCode(c *gin.Context) {
+	clientAppID, err := getClientAppID(c)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
 	var req models.QRCodeCreateRequest
+	req.ClientAppID = clientAppID
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
