@@ -65,6 +65,9 @@ type MetadataDefinition struct {
 	Fields []FieldDefinition `json:"fields"`
 }
 
+// MetadataArray is a custom type to handle an array of MetadataDefinition.
+type MetadataArray []MetadataDefinition
+
 // ---------- DATABASE SERIALIZATION ----------
 
 func (m MetadataDefinition) Value() (driver.Value, error) {
@@ -80,6 +83,24 @@ func (m *MetadataDefinition) Scan(value interface{}) error {
 	if !ok {
 		return errors.New("failed to scan MetadataDefinition: expected []byte")
 	}
+	return json.Unmarshal(bytes, m)
+}
+
+func (m MetadataArray) Value() (driver.Value, error) {
+	return json.Marshal(m)
+}
+
+func (m *MetadataArray) Scan(value interface{}) error {
+	if value == nil {
+		*m = nil
+		return nil
+	}
+
+	bytes, ok := value.([]byte)
+	if !ok {
+		return errors.New("failed to scan MetadataArray: expected []byte")
+	}
+
 	return json.Unmarshal(bytes, m)
 }
 
@@ -125,28 +146,28 @@ type QRCodeStyle struct {
 // --------- Template -----------
 
 type Template struct {
-	ID          string               `gorm:"primaryKey" json:"id"`
-	Name        string               `json:"name"`
-	Description string               `json:"description"`
-	ClientAppID string               `gorm:"not null" json:"clientAppId"`
-	ClientApp   ClientApp            `gorm:"foreignKey:ClientAppID;references:ID" json:"-"`
-	Metadata    []MetadataDefinition `gorm:"type:json" json:"metadata"` // Changed to an array of objects
-	Active      bool                 `json:"active"`
-	CreatedAt   time.Time            `json:"createdAt"`
-	UpdatedAt   time.Time            `json:"updatedAt"`
+	ID          string        `gorm:"primaryKey" json:"id"`
+	Name        string        `json:"name"`
+	Description string        `json:"description"`
+	ClientAppID string        `gorm:"not null" json:"clientAppId"`
+	ClientApp   ClientApp     `gorm:"foreignKey:ClientAppID;references:ID" json:"-"`
+	Metadata    MetadataArray `gorm:"type:json" json:"metadata"` // Updated to use MetadataArray
+	Active      bool          `json:"active"`
+	CreatedAt   time.Time     `json:"createdAt"`
+	UpdatedAt   time.Time     `json:"updatedAt"`
 }
 
 // --------- Requests -----------
 
 type TemplateCreateRequest struct {
-	Name        string               `json:"name" binding:"required"`
-	Description string               `json:"description"`
-	ClientAppID string               `json:"clientAppId" binding:"required"`
-	Metadata    []MetadataDefinition `json:"metadata"` // Changed to an array of objects
+	Name        string        `json:"name" binding:"required"`
+	Description string        `json:"description"`
+	ClientAppID string        `json:"clientAppId" binding:"required"`
+	Metadata    MetadataArray `json:"metadata"` // Updated to use MetadataArray
 }
 
 type TemplateUpdateRequest struct {
-	Name        string                `json:"name"`
-	Description string                `json:"description"`
-	Metadata    *[]MetadataDefinition `json:"metadata"` // Changed to an array of objects
+	Name        string         `json:"name"`
+	Description string         `json:"description"`
+	Metadata    *MetadataArray `json:"metadata"` // Updated to use MetadataArray
 }
