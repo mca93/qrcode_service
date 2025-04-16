@@ -7,10 +7,10 @@ import (
 	"github.com/google/uuid"
 	"github.com/mca93/qrcode_service/config"
 	"github.com/mca93/qrcode_service/models"
+	"github.com/mca93/qrcode_service/utils"
 	"github.com/mca93/qrcode_service/validators"
 
 	"github.com/gin-gonic/gin"
-	"github.com/skip2/go-qrcode"
 )
 
 // ListQRCodes retrieves all QR codes for the authenticated client app.
@@ -96,9 +96,9 @@ func CreateQRCode(c *gin.Context) {
 
 // GetQRCode retrieves a specific QR code by its ID.
 func GetQRCode(c *gin.Context) {
-	clientAppID := c.GetHeader("client_app_id")
-	if clientAppID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "clientAppId header is required"})
+	clientAppID, err := getClientAppID(c)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
@@ -120,9 +120,9 @@ func GetQRCode(c *gin.Context) {
 
 // UpdateQRCode updates an existing QR code by its ID.
 func UpdateQRCode(c *gin.Context) {
-	clientAppID := c.GetHeader("client_app_id")
-	if clientAppID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "clientAppId header is required"})
+	clientAppID, err := getClientAppID(c)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
@@ -171,9 +171,9 @@ func UpdateQRCode(c *gin.Context) {
 
 // DeleteQRCode deletes a QR code by its ID.
 func DeleteQRCode(c *gin.Context) {
-	clientAppID := c.GetHeader("client_app_id")
-	if clientAppID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "clientAppId header is required"})
+	clientAppID, err := getClientAppID(c)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
@@ -199,18 +199,21 @@ func GetQRCodeImage(c *gin.Context) {
 	id := c.Param("id")
 	var qr models.QRCode
 
-	if err := config.DB.First(&qr, "id = ?", id).Error; err != nil {
+	if err := config.DB.Preload("Template").First(&qr, "id = ?", id).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "QR Code not found"})
 		return
 	}
 
-	png, err := qrcode.Encode(qr.DeepLinkURL, qrcode.Medium, 256)
+	//png, err := qrcode.Encode(qr.DeepLinkURL, qrcode.Medium, 256)
+
+	imgQR := utils.NewQRCodeService(&qr, &qr.Template)
+	png, err := imgQR.GenerateBase64Image()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Could not generate QR code"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Could not generate QR code:" + err.Error()})
 		return
 	}
 
-	c.Data(http.StatusOK, "image/png", png)
+	c.JSON(http.StatusOK, png)
 }
 
 // ScanQRCode increments the scan count for a QR code.

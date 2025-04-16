@@ -14,7 +14,7 @@ func RegisterQRCodeRoutes(router *gin.Engine) {
 		v1.POST("/qrcodes", middleware.QRCodeAuthMiddleware(), controllers.CreateQRCode)
 		v1.GET("/qrcodes/:id", middleware.QRCodeAuthMiddleware(), controllers.GetQRCode)
 		// Preview QR code image
-		v1.GET("/qrcodes/:id/preview", middleware.QRCodeAuthMiddleware(), controllers.GetQRCodeImage)
+		v1.GET("/qrcodes/:id/preview", controllers.GetQRCodeImage)
 		// Download QR code image
 		// v1.GET("/qrcodes/:id/download", middleware.ApiKeyAuthMiddleware(), controllers.DownloadQRCode)
 		v1.PUT("/qrcodes/:id", middleware.QRCodeAuthMiddleware(), controllers.UpdateQRCode)
