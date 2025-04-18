@@ -43,7 +43,7 @@ func ListQRCodes(c *gin.Context) {
 
 // CreateQRCode handles the creation of a new QR code.
 func CreateQRCode(c *gin.Context) {
-	clientAppID, err := getClientAppID(c)
+	clientAppID, err := getValidClientAppID(c)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -96,7 +96,7 @@ func CreateQRCode(c *gin.Context) {
 
 // GetQRCode retrieves a specific QR code by its ID.
 func GetQRCode(c *gin.Context) {
-	clientAppID, err := getClientAppID(c)
+	clientAppID, err := getValidClientAppID(c)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -120,7 +120,7 @@ func GetQRCode(c *gin.Context) {
 
 // UpdateQRCode updates an existing QR code by its ID.
 func UpdateQRCode(c *gin.Context) {
-	clientAppID, err := getClientAppID(c)
+	clientAppID, err := getValidClientAppID(c)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -171,7 +171,7 @@ func UpdateQRCode(c *gin.Context) {
 
 // DeleteQRCode deletes a QR code by its ID.
 func DeleteQRCode(c *gin.Context) {
-	clientAppID, err := getClientAppID(c)
+	clientAppID, err := getValidClientAppID(c)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return

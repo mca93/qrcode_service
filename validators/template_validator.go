@@ -1,73 +1,185 @@
 package validators
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
+	"regexp"
+	"strings"
+	"time"
 
 	"github.com/mca93/qrcode_service/models"
 )
 
-// ValidateTemplateCreate validates the TemplateCreateRequest.
+const (
+	maxNameLength        = 100
+	maxDescriptionLength = 500
+	minQRSize            = 100
+	maxQRSize            = 1000
+	colorRegex           = "^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$"
+)
+
+// ValidateTemplateCreate validates a TemplateCreateRequest
 func ValidateTemplateCreate(req models.TemplateCreateRequest) error {
-	// Validate Name
-	if req.Name == "" {
+	if err := validateName(req.Name); err != nil {
+		return err
+	}
+
+	if err := validateDescription(req.Description); err != nil {
+		return err
+	}
+
+	if err := validateClientAppID(req.ClientAppID); err != nil {
+		return err
+	}
+
+	if err := validateDefinition(req.Definition); err != nil {
+		return err
+	}
+
+	if err := validateShape(req.Shape); err != nil {
+		return err
+	}
+
+	if err := validateColor(req.ForegroundColor, "foregroundColor"); err != nil {
+		return err
+	}
+
+	if err := validateColor(req.BackgroundColor, "backgroundColor"); err != nil {
+		return err
+	}
+
+	if err := validateSize(req.Size); err != nil {
+		return err
+	}
+
+	if err := validateLogoURL(req.LogoURL); err != nil {
+		return err
+	}
+
+	if err := validateErrorCorrection(req.ErrorCorrection); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// ValidateTemplateUpdate validates a TemplateUpdateRequest
+func ValidateTemplateUpdate(req models.TemplateUpdateRequest) error {
+	// Reuse the same validation as create since the fields are the same
+	return ValidateTemplateCreate(models.TemplateCreateRequest(req))
+}
+
+func validateName(name string) error {
+	if strings.TrimSpace(name) == "" {
 		return errors.New("name is required")
 	}
 
-	// Validate ClientAppID
-	if req.ClientAppID == "" {
+	if len(name) > maxNameLength {
+		return fmt.Errorf("name must be less than %d characters", maxNameLength)
+	}
+
+	return nil
+}
+
+func validateDescription(description string) error {
+	if len(description) > maxDescriptionLength {
+		return fmt.Errorf("description must be less than %d characters", maxDescriptionLength)
+	}
+	return nil
+}
+
+func validateClientAppID(clientAppID string) error {
+	if strings.TrimSpace(clientAppID) == "" {
 		return errors.New("clientAppId is required")
 	}
+	// Add more validation if needed (like UUID format check)
+	return nil
+}
 
-	// Validate Metadata
-	if len(req.Metadata) != 2 {
-		return errors.New("metadata must contain exactly two objects")
+func validateDefinition(definition models.Definition) error {
+	if len(definition) == 0 {
+		return errors.New("definition must contain at least one field")
 	}
-	for _, metadata := range req.Metadata {
-		if err := validateMetadata(metadata); err != nil {
-			return fmt.Errorf("invalid metadata: %w", err)
+
+	fieldNames := make(map[string]bool)
+	for _, field := range definition {
+		if err := field.Validate(); err != nil {
+			return fmt.Errorf("invalid field: %w", err)
+		}
+
+		// Check for duplicate field names
+		if fieldNames[field.Name] {
+			return fmt.Errorf("duplicate field name: %s", field.Name)
+		}
+		fieldNames[field.Name] = true
+
+		// Validate field-specific validations
+		if err := validateFieldValidations(field); err != nil {
+			return fmt.Errorf("invalid validations for field %s: %w", field.Name, err)
 		}
 	}
 
 	return nil
 }
 
-// ValidateTemplateUpdate validates the TemplateUpdateRequest.
-func ValidateTemplateUpdate(req models.TemplateUpdateRequest) error {
-	// Validate Metadata (if provided)
-	if req.Metadata != nil {
-		if len(*req.Metadata) != 2 {
-			return errors.New("metadata must contain exactly two objects")
-		}
-		for _, metadata := range *req.Metadata {
-			if err := validateMetadata(metadata); err != nil {
-				return fmt.Errorf("invalid metadata: %w", err)
-			}
-		}
+func validateFieldValidations(field models.Field) error {
+	switch field.Type {
+	case models.FieldTypeText:
+		return validateTextValidations(field.Validations)
+	case models.FieldTypeNumber:
+		return validateNumberValidations(field.Validations)
+	case models.FieldTypeMedia:
+		return validateMediaValidations(field.Validations)
+	default:
+		return fmt.Errorf("unsupported field type: %s", field.Type)
 	}
-
-	return nil
 }
 
-// validateMetadata validates a single MetadataDefinition.
-func validateMetadata(metadata models.MetadataDefinition) error {
-	// Validate Metadata Type
-	if !metadata.Type.IsValid() {
-		return fmt.Errorf("invalid metadata type: %s", metadata.Type)
-	}
-
-	// Validate Fields
-	for _, field := range metadata.Fields {
-		if metadata.Type == models.MetadataTypeStyle {
-			// Validate the Style object
-			if err := validateQRCodeStyle(field.Validations); err != nil {
-				return fmt.Errorf("invalid style object: %w", err)
+func validateTextValidations(validations map[string]interface{}) error {
+	// Example validation for text fields
+	if minLen, ok := validations["minLength"]; ok {
+		if min, ok := minLen.(float64); ok {
+			if min < 0 {
+				return errors.New("minLength must be >= 0")
 			}
 		} else {
-			// Validate other field types
-			if err := field.Validate(); err != nil {
-				return fmt.Errorf("invalid field: %w", err)
+			return errors.New("minLength must be a number")
+		}
+	}
+
+	if maxLen, ok := validations["maxLength"]; ok {
+		if max, ok := maxLen.(float64); ok {
+			if max <= 0 {
+				return errors.New("maxLength must be > 0")
+			}
+		} else {
+			return errors.New("maxLength must be a number")
+		}
+	}
+
+	// Add more text validations as needed
+	return nil
+}
+
+func validateNumberValidations(validations map[string]interface{}) error {
+	// Example validation for number fields
+	if minVal, ok := validations["min"]; ok {
+		if _, ok := minVal.(float64); !ok {
+			return errors.New("min must be a number, got %T")
+		}
+	}
+
+	if maxVal, ok := validations["max"]; ok {
+		if _, ok := maxVal.(float64); !ok {
+			return errors.New("max must be a number")
+		}
+	}
+
+	// Check if min <= max when both are present
+	if minVal, ok1 := validations["min"]; ok1 {
+		if maxVal, ok2 := validations["max"]; ok2 {
+			if minVal.(float64) > maxVal.(float64) {
+				return errors.New("min must be less than or equal to max")
 			}
 		}
 	}
@@ -75,51 +187,109 @@ func validateMetadata(metadata models.MetadataDefinition) error {
 	return nil
 }
 
-// validateQRCodeStyle validates the QRCodeStyle object.
-func validateQRCodeStyle(validations map[string]interface{}) error {
-	// Convert the map to a QRCodeStyle struct
-	var style models.QRCodeStyle
-	data, err := json.Marshal(validations)
-	if err != nil {
-		return fmt.Errorf("failed to marshal style validations: %w", err)
-	}
-	if err := json.Unmarshal(data, &style); err != nil {
-		return fmt.Errorf("failed to unmarshal style validations: %w", err)
+func validateMediaValidations(validations map[string]interface{}) error {
+	// Example validation for media fields
+	if allowedTypes, ok := validations["allowedTypes"]; ok {
+		if types, ok := allowedTypes.([]interface{}); ok {
+			if len(types) == 0 {
+				return errors.New("allowedTypes must contain at least one type")
+			}
+			for _, t := range types {
+				if _, ok := t.(string); !ok {
+					return errors.New("allowedTypes must be an array of strings")
+				}
+			}
+		} else {
+			return errors.New("allowedTypes must be an array")
+		}
 	}
 
-	// Validate individual fields in QRCodeStyle
-	if style.Shape == "" {
-		return errors.New("shape is required")
+	if maxSize, ok := validations["maxSize"]; ok {
+		if size, ok := maxSize.(float64); ok {
+			if size <= 0 {
+				return errors.New("maxSize must be > 0")
+			}
+		} else {
+			return errors.New("maxSize must be a number")
+		}
 	}
-	if style.ForegroundColor == "" {
-		return errors.New("foregroundColor is required")
+
+	return nil
+}
+
+func validateShape(shape string) error {
+	if shape == "" {
+		return nil // shape is optional
 	}
-	if style.BackgroundColor == "" {
-		return errors.New("backgroundColor is required")
+
+	// Add shape validation if there are specific allowed shapes
+	// Example:
+	// allowedShapes := map[string]bool{"square": true, "circle": true, "rounded": true}
+	// if !allowedShapes[shape] {
+	//     return fmt.Errorf("invalid shape: %s. Allowed shapes are: square, circle, rounded", shape)
+	// }
+
+	return nil
+}
+
+func validateColor(color, fieldName string) error {
+	if color == "" {
+		return nil // color is optional
 	}
-	if style.Size <= 0 {
-		return errors.New("size must be greater than 0")
+
+	matched, err := regexp.MatchString(colorRegex, color)
+	if err != nil {
+		return fmt.Errorf("error validating %s: %v", fieldName, err)
 	}
-	if style.Margin < 0 {
-		return errors.New("margin cannot be negative")
+	if !matched {
+		return fmt.Errorf("invalid %s format, must be a valid hex color (e.g. #RRGGBB or #RGB)", fieldName)
 	}
-	if style.CornerRadius < 0 {
-		return errors.New("cornerRadius cannot be negative")
+
+	return nil
+}
+
+func validateSize(size int) error {
+	if size < minQRSize || size > maxQRSize {
+		return fmt.Errorf("size must be between %d and %d", minQRSize, maxQRSize)
 	}
-	if style.Gradient && style.GradientColor == "" {
-		return errors.New("gradientColor is required when gradient is true")
+	return nil
+}
+
+func validateLogoURL(logoURL string) error {
+	if logoURL == "" {
+		return nil // logo is optional
 	}
-	if style.Border < 0 {
-		return errors.New("border cannot be negative")
+
+	// Add URL validation if needed
+	// Example:
+	// if _, err := url.ParseRequestURI(logoURL); err != nil {
+	//     return fmt.Errorf("invalid logo URL: %v", err)
+	// }
+
+	return nil
+}
+
+func validateErrorCorrection(ec models.QRCodeErrorCorrection) error {
+	switch ec {
+	case models.ErrorCorrectionL, models.ErrorCorrectionM, models.ErrorCorrectionQ, models.ErrorCorrectionH, "":
+		return nil
+	default:
+		return fmt.Errorf("invalid error correction level: %s. Valid options are L, M, Q, H", ec)
 	}
-	if style.BorderColor == "" && style.Border > 0 {
-		return errors.New("borderColor is required when border is greater than 0")
+}
+
+// ValidateTemplateFilters validates template filter parameters
+func ValidateTemplateFilters(active *bool, clientAppID string, createdAtFrom, createdAtTo *time.Time) error {
+	if clientAppID != "" {
+		if err := validateClientAppID(clientAppID); err != nil {
+			return err
+		}
 	}
-	if style.ErrorCorrection != models.ErrorCorrectionL &&
-		style.ErrorCorrection != models.ErrorCorrectionM &&
-		style.ErrorCorrection != models.ErrorCorrectionQ &&
-		style.ErrorCorrection != models.ErrorCorrectionH {
-		return errors.New("invalid errorCorrection value")
+
+	if createdAtFrom != nil && createdAtTo != nil {
+		if createdAtFrom.After(*createdAtTo) {
+			return errors.New("createdAtFrom must be before or equal to createdAtTo")
+		}
 	}
 
 	return nil

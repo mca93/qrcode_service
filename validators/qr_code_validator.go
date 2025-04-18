@@ -96,23 +96,10 @@ func validateCustomData(data map[string]interface{}) error {
 	return nil
 }
 
-// ValidateQRCodeData validates the Data field of a QR code against the template's metadata of type CONTENT.
+// ValidateQRCodeData validates the Data field of a QR code against the template's Definition.
 func ValidateQRCodeData(data models.JSONMap, template models.Template) error {
-	// Find the metadata of type CONTENT
-	var contentMetadata *models.MetadataDefinition
-	for _, metadata := range template.Metadata {
-		if metadata.Type == models.MetadataTypeContent {
-			contentMetadata = &metadata
-			break
-		}
-	}
-
-	if contentMetadata == nil {
-		return errors.New("template does not contain metadata of type CONTENT")
-	}
-
-	// Validate that all required fields in the CONTENT metadata are present in the Data field
-	for _, field := range contentMetadata.Fields {
+	// Iterate through the Definition to validate fields
+	for _, field := range template.Definition {
 		// Check if the field is marked as required
 		if required, ok := field.Validations["required"].(bool); ok && required {
 			// Ensure the required field exists in the Data map
@@ -120,11 +107,16 @@ func ValidateQRCodeData(data models.JSONMap, template models.Template) error {
 				return fmt.Errorf("missing required field in data: %s", field.Name)
 			}
 		}
+
+		// Additional validation for specific field types
+		if err := validateFieldData(field, data[field.Name]); err != nil {
+			return fmt.Errorf("validation failed for field '%s': %w", field.Name, err)
+		}
 	}
 
-	// Validate that all keys in the Data field match the fields in the CONTENT metadata
+	// Validate that all keys in the Data field match the fields in the Definition
 	validKeys := make(map[string]bool)
-	for _, field := range contentMetadata.Fields {
+	for _, field := range template.Definition {
 		validKeys[field.Name] = true
 	}
 
@@ -132,6 +124,40 @@ func ValidateQRCodeData(data models.JSONMap, template models.Template) error {
 		if !validKeys[key] {
 			return fmt.Errorf("invalid key in data: %s", key)
 		}
+	}
+
+	return nil
+}
+
+// validateFieldData validates the value of a specific field based on its type and validations.
+func validateFieldData(field models.Field, value interface{}) error {
+	// Skip validation if the value is nil
+	if value == nil {
+		return nil
+	}
+
+	switch field.Type {
+	case models.FieldTypeText:
+		if maxLength, ok := field.Validations["maxLength"].(float64); ok {
+			if len(fmt.Sprintf("%v", value)) > int(maxLength) {
+				return fmt.Errorf("value exceeds maxLength of %d", int(maxLength))
+			}
+		}
+	case models.FieldTypeNumber:
+		if min, ok := field.Validations["min"].(float64); ok {
+			if num, ok := value.(float64); ok && num < min {
+				return fmt.Errorf("value is less than min of %f", min)
+			}
+		}
+		if max, ok := field.Validations["max"].(float64); ok {
+			if num, ok := value.(float64); ok && num > max {
+				return fmt.Errorf("value exceeds max of %f", max)
+			}
+		}
+	case models.FieldTypeMedia:
+		// Add specific validations for media fields if needed
+	default:
+		return fmt.Errorf("unsupported field type: %s", field.Type)
 	}
 
 	return nil

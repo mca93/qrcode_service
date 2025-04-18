@@ -8,6 +8,7 @@ import (
 	"time"
 )
 
+// ---------- ENUMS ----------
 type QRCodeErrorCorrection string
 
 const (
@@ -16,8 +17,6 @@ const (
 	ErrorCorrectionQ QRCodeErrorCorrection = "Q"
 	ErrorCorrectionH QRCodeErrorCorrection = "H"
 )
-
-// ---------- ENUMS ----------
 
 type FieldType string
 
@@ -36,76 +35,44 @@ func (ft FieldType) IsValid() bool {
 	}
 }
 
-type MetadataType string
-
-const (
-	MetadataTypeContent MetadataType = "Content"
-	MetadataTypeStyle   MetadataType = "Style"
-)
-
-func (mt MetadataType) IsValid() bool {
-	switch mt {
-	case MetadataTypeContent, MetadataTypeStyle:
-		return true
-	default:
-		return false
-	}
-}
-
 // ---------- STRUCTS ----------
 
-type FieldDefinition struct {
+// Field represents a single field in the template definition.
+type Field struct {
 	Name        string                 `json:"name"`
 	Type        FieldType              `json:"type"`
 	Validations map[string]interface{} `json:"validations"`
 }
 
-type MetadataDefinition struct {
-	Type   MetadataType      `json:"type"`
-	Fields []FieldDefinition `json:"fields"`
-}
-
-// MetadataArray is a custom type to handle an array of MetadataDefinition.
-type MetadataArray []MetadataDefinition
+// Definition is an array of fields that defines the structure of a template.
+type Definition []Field
 
 // ---------- DATABASE SERIALIZATION ----------
 
-func (m MetadataDefinition) Value() (driver.Value, error) {
-	return json.Marshal(m)
+// Value implements the `driver.Valuer` interface for Definition.
+func (d Definition) Value() (driver.Value, error) {
+	return json.Marshal(d)
 }
 
-func (m *MetadataDefinition) Scan(value interface{}) error {
+// Scan implements the `sql.Scanner` interface for Definition.
+func (d *Definition) Scan(value interface{}) error {
 	if value == nil {
-		*m = MetadataDefinition{}
-		return nil
-	}
-	bytes, ok := value.([]byte)
-	if !ok {
-		return errors.New("failed to scan MetadataDefinition: expected []byte")
-	}
-	return json.Unmarshal(bytes, m)
-}
-
-func (m MetadataArray) Value() (driver.Value, error) {
-	return json.Marshal(m)
-}
-
-func (m *MetadataArray) Scan(value interface{}) error {
-	if value == nil {
-		*m = nil
+		*d = nil
 		return nil
 	}
 
 	bytes, ok := value.([]byte)
 	if !ok {
-		return errors.New("failed to scan MetadataArray: expected []byte")
+		return errors.New("failed to scan Definition: expected []byte")
 	}
 
-	return json.Unmarshal(bytes, m)
+	return json.Unmarshal(bytes, d)
 }
 
-// Optional: FieldDefinition validation logic
-func (f FieldDefinition) Validate() error {
+// ---------- VALIDATION ----------
+
+// Validate validates a single field.
+func (f Field) Validate() error {
 	if f.Name == "" {
 		return errors.New("field name is required")
 	}
@@ -115,11 +82,9 @@ func (f FieldDefinition) Validate() error {
 	return nil
 }
 
-func (m MetadataDefinition) Validate() error {
-	if !m.Type.IsValid() {
-		return fmt.Errorf("invalid metadata type: %s", m.Type)
-	}
-	for _, field := range m.Fields {
+// Validate validates the entire Definition.
+func (d Definition) Validate() error {
+	for _, field := range d {
 		if err := field.Validate(); err != nil {
 			return err
 		}
@@ -127,47 +92,51 @@ func (m MetadataDefinition) Validate() error {
 	return nil
 }
 
-type QRCodeStyle struct {
+// ---------- TEMPLATE MODEL ----------
+
+type Template struct {
+	ID              string                `gorm:"primaryKey" json:"id"`
+	Name            string                `json:"name"`
+	Description     string                `json:"description"`
+	ClientAppID     string                `gorm:"not null" json:"clientAppId"`
+	ClientApp       ClientApp             `gorm:"foreignKey:ClientAppID;references:ID" json:"-"`
+	Definition      Definition            `gorm:"type:json" json:"definition"` // Updated to use Definition
 	Shape           string                `json:"shape"`
 	ForegroundColor string                `json:"foregroundColor"`
 	BackgroundColor string                `json:"backgroundColor"`
 	Size            int                   `json:"size"`
-	Margin          int                   `json:"margin"`
-	CornerRadius    int                   `json:"cornerRadius"`
-	Gradient        bool                  `json:"gradient"`
-	GradientColor   string                `json:"gradientColor"`
-	GradientAngle   int                   `json:"gradientAngle"`
-	Border          int                   `json:"border"`
-	BorderColor     string                `json:"borderColor"`
+	LogoURL         string                `json:"logoUrl"`
+	ErrorCorrection QRCodeErrorCorrection `json:"errorCorrection"`
+
+	Active    bool      `json:"active"`
+	CreatedAt time.Time `json:"createdAt"`
+	UpdatedAt time.Time `json:"updatedAt"`
+}
+
+// ---------- REQUEST STRUCTS ----------
+
+type TemplateCreateRequest struct {
+	Name            string                `json:"name" binding:"required"`
+	Description     string                `json:"description"`
+	ClientAppID     string                `json:"clientAppId" binding:"required"`
+	Definition      Definition            `json:"definition"` // Updated to use Definition
+	Shape           string                `json:"shape"`
+	ForegroundColor string                `json:"foregroundColor"`
+	BackgroundColor string                `json:"backgroundColor"`
+	Size            int                   `json:"size"`
 	LogoURL         string                `json:"logoUrl"`
 	ErrorCorrection QRCodeErrorCorrection `json:"errorCorrection"`
 }
 
-// --------- Template -----------
-
-type Template struct {
-	ID          string        `gorm:"primaryKey" json:"id"`
-	Name        string        `json:"name"`
-	Description string        `json:"description"`
-	ClientAppID string        `gorm:"not null" json:"clientAppId"`
-	ClientApp   ClientApp     `gorm:"foreignKey:ClientAppID;references:ID" json:"-"`
-	Metadata    MetadataArray `gorm:"type:json" json:"metadata"` // Updated to use MetadataArray
-	Active      bool          `json:"active"`
-	CreatedAt   time.Time     `json:"createdAt"`
-	UpdatedAt   time.Time     `json:"updatedAt"`
-}
-
-// --------- Requests -----------
-
-type TemplateCreateRequest struct {
-	Name        string        `json:"name" binding:"required"`
-	Description string        `json:"description"`
-	ClientAppID string        `json:"clientAppId" binding:"required"`
-	Metadata    MetadataArray `json:"metadata"` // Updated to use MetadataArray
-}
-
 type TemplateUpdateRequest struct {
-	Name        string         `json:"name"`
-	Description string         `json:"description"`
-	Metadata    *MetadataArray `json:"metadata"` // Updated to use MetadataArray
+	Name            string                `json:"name" binding:"required"`
+	Description     string                `json:"description"`
+	ClientAppID     string                `json:"clientAppId" binding:"required"`
+	Definition      Definition            `json:"definition"` // Updated to use Definition
+	Shape           string                `json:"shape"`
+	ForegroundColor string                `json:"foregroundColor"`
+	BackgroundColor string                `json:"backgroundColor"`
+	Size            int                   `json:"size"`
+	LogoURL         string                `json:"logoUrl"`
+	ErrorCorrection QRCodeErrorCorrection `json:"errorCorrection"`
 }

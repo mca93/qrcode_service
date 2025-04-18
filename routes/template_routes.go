@@ -5,13 +5,14 @@ import (
 	"github.com/mca93/qrcode_service/controllers"
 )
 
+// RegisterTemplateRoutes registers all routes related to templates.
 func RegisterTemplateRoutes(r *gin.Engine) {
-	v1 := r.Group("/v1/templates")
+	templateRoutes := r.Group("/v1/templates")
 	{
-		v1.GET("", controllers.ListTemplates)
-		v1.POST("", controllers.CreateTemplate)
-		v1.GET("/:id", controllers.GetTemplate)
-		v1.PATCH("/:id", controllers.UpdateTemplate)
-		v1.POST("/:id/deactivate", controllers.DeactivateTemplate)
+		templateRoutes.GET("", controllers.NewTemplateController().ListTemplates)                      // List all templates
+		templateRoutes.POST("", controllers.NewTemplateController().CreateTemplate)                    // Create a new template
+		templateRoutes.GET("/:id", controllers.NewTemplateController().GetTemplate)                    // Get a specific template by ID
+		templateRoutes.PATCH("/:id", controllers.NewTemplateController().UpdateTemplate)               // Update a specific template by ID
+		templateRoutes.POST("/:id/deactivate", controllers.NewTemplateController().DeactivateTemplate) // Deactivate a specific template by ID
 	}
 }

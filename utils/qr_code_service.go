@@ -54,7 +54,7 @@ func (s *QRCodeService) getDataToEncode() string {
 	if s.QRCode.DeepLinkURL != "" {
 		return s.QRCode.DeepLinkURL
 	}
-	return fmt.Sprintf("https://yourdomain.com/qrcode/%s", s.QRCode.ID)
+	return fmt.Sprintf("qrcode/%s", s.QRCode.ID)
 }
 
 type Option interface{}
@@ -91,20 +91,19 @@ func (s *QRCodeService) getQRCodeOptions() ([]qrcode.EncodeOption, []qs.ImageOpt
 
 // getStyleMetadata retrieves the metadata object of type "Style" from the Template.
 func (s *QRCodeService) getStyleMetadata() (map[string]interface{}, error) {
-	for _, metadata := range s.Template.Metadata {
-		fmt.Printf("Fetching style metadata from template ID: %+v\n", s.Template)
 
-		if metadata.Type == "Style" {
-			// Convert the fields into a map for easier access
-			style := make(map[string]interface{})
-			for name, field := range metadata.Fields[0].Validations {
+	// Convert the fields into a map for easier access
+	style := make(map[string]interface{})
+	style["foregroundColor"] = s.Template.ForegroundColor
+	style["backgroundColor"] = s.Template.BackgroundColor
+	style["shape"] = s.Template.Shape                     // Default shape if not specified in the template
+	style["logoUrl"] = s.Template.LogoURL                 // Default logo URL if not specified in the template
+	style["size"] = s.Template.Size                       // Default size if not specified in the template
+	style["errorCorrection"] = s.Template.ErrorCorrection // Default error correction if not specified in the template
 
-				style[name] = field
-			}
-			return style, nil
-		}
-	}
-	return nil, fmt.Errorf("style metadata not found in template")
+	return style, nil
+
+	//return nil, fmt.Errorf("style metadata not found in template")
 }
 
 // applyShapeOption applies the shape option if specified in the style.
@@ -124,30 +123,33 @@ func (s *QRCodeService) applyShapeOption(style map[string]interface{}, options *
 
 // applyLogoOption applies the logo option if specified in the style.
 func (s *QRCodeService) applyLogoOption(style map[string]interface{}, options *[]qs.ImageOption) error {
-	if logoURL, ok := style["logoUrl"].(string); ok && logoURL != "" {
-		logoBytes, err := os.ReadFile(logoURL)
-		if err != nil {
-			return err
-		}
-		img, _, err := image.Decode(bytes.NewBuffer(logoBytes))
-		if err != nil {
-			return fmt.Errorf("failed to read logo file: %w", err)
-		}
-		opt := qs.WithLogoImage(img)
-		*options = append(*options, opt)
+	// Check if the logo URL is provided in the style
+	logoURL, ok := style["logoUrl"].(string)
+	if !ok || logoURL == "" {
+		return nil // No logo specified, skip
 	}
+
+	// Verify the file exists
+	if _, err := os.Stat(logoURL); os.IsNotExist(err) {
+		return fmt.Errorf("logo file does not exist: %s", logoURL)
+	}
+	//logoURL = "./uploads/logos/Gmail_icon.png"
+	// Read the logo file
+	logoBytes, err := os.ReadFile(logoURL)
+	if err != nil {
+		return fmt.Errorf("failed to read logo file: %w", err)
+	}
+
+	// Decode the logo image
+	img, _, err := image.Decode(bytes.NewBuffer(logoBytes))
+	if err != nil {
+		return fmt.Errorf("failed to decode logo image: %w", err)
+	}
+
+	// Append the logo option
+	*options = append(*options, qs.WithLogoImage(img))
 	return nil
 }
-
-// // applyOptions applies all options to the QR code.
-// func applyOptions(qrCode *qrcode.QRCode, options []qrcode.EncodeOption) error {
-// 	for _, option := range options {
-// 		if err := qrCode.Apply(option); err != nil {
-// 			return fmt.Errorf("failed to apply QR code option: %w", err)
-// 		}
-// 	}
-// 	return nil
-// }
 
 type CustomWriteCloser interface {
 	Close() error
